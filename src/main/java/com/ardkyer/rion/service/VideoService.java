@@ -8,6 +8,7 @@ public interface VideoService {
     Video uploadVideo(Video video);
     Optional<Video> getVideoById(Long id);
     List<Video> getVideosByUser(User user);
+    List<Video> getLikedVideosByUser(User user);
     List<Video> getTopVideos();
     Video updateVideo(Video video);
     void deleteVideo(Long id);

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>My Profile</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Add your CSS styles here */
+    </style>
+</head>
+<body>
+<h1>My Profile</h1>
+<p>Username: <span th:text="${user.username}">username</span></p>
+<p>Email: <span th:text="${user.email}">email@example.com</span></p>
+
+<h2>My Videos</h2>
+<div th:if="${userVideos.empty}">
+    <p>You haven't uploaded any videos yet.</p>
+</div>
+<div th:each="video : ${userVideos}">
+    <h3 th:text="${video.title}">Video Title</h3>
+    <p th:text="${video.description}">Video Description</p>
+    <video width="320" height="240" controls>
+        <source th:src="@{'/videos/file/' + ${video.videoUrl}}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <form th:action="@{/profile/delete-video/{id}(id=${video.id})}" method="post">
+        <button type="submit">Delete</button>
+    </form>
+</div>
+
+<h2>Liked Videos</h2>
+<div th:if="${likedVideos.empty}">
+    <p>You haven't liked any videos yet.</p>
+</div>
+<div th:each="video : ${likedVideos}">
+    <h3 th:text="${video.title}">Video Title</h3>
+    <p th:text="${video.description}">Video Description</p>
+    <video width="320" height="240" controls>
+        <source th:src="@{'/videos/file/' + ${video.videoUrl}}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
+
+<a href="/home">Back to Home</a>
+</body>
+</html>
