@@ -1,13 +1,16 @@
 package com.ardkyer.rion.controller;
 
+import com.amazonaws.services.s3.model.S3Object;
 import com.ardkyer.rion.entity.Video;
 import com.ardkyer.rion.entity.User;
 import com.ardkyer.rion.service.VideoService;
 import com.ardkyer.rion.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -56,12 +59,17 @@ public class VideoController {
         }
     }
 
-    @GetMapping("/file/{filename:.+}")
-    @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        Resource file = loadAsResource(filename);
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + file.getFilename() + "\"").body(file);
+    @GetMapping("/file/{fileName:.+}")
+    public ResponseEntity<InputStreamResource> serveFile(@PathVariable String fileName) {
+        S3Object s3Object = videoService.getVideoFile(fileName);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(s3Object.getObjectMetadata().getContentType()));
+        headers.setContentLength(s3Object.getObjectMetadata().getContentLength());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(new InputStreamResource(s3Object.getObjectContent()));
     }
 
     private Resource loadAsResource(String filename) {
@@ -87,39 +95,15 @@ public class VideoController {
     public String handleFileUpload(@RequestParam("title") String title,
                                    @RequestParam("description") String description,
                                    @RequestParam("video") MultipartFile file,
-                                   RedirectAttributes redirectAttributes) {
-        if (file.isEmpty()) {
-            redirectAttributes.addFlashAttribute("error", "Please select a file to upload");
-            return "redirect:/videos/upload";
-        }
+                                   Authentication authentication) throws IOException {
+        User currentUser = userService.findByUsername(authentication.getName());
 
-        try {
-            // Generate a unique filename
-            String filename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-
-            // Save the file
-            byte[] bytes = file.getBytes();
-            Path path = Paths.get(UPLOADED_FOLDER + filename);
-            Files.write(path, bytes);
-
-            // Get the current authenticated user
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            User currentUser = userService.findByUsername(auth.getName());
-
-            // Create and save video metadata
-            Video video = new Video();
-            video.setTitle(title);
-            video.setDescription(description);
-            video.setVideoUrl(filename);
-            video.setUser(currentUser);
-            videoService.uploadVideo(video);
-
-            redirectAttributes.addFlashAttribute("message", "You successfully uploaded " + file.getOriginalFilename() + "!");
-        } catch (IOException e) {
-            e.printStackTrace();
-            redirectAttributes.addFlashAttribute("error", "Failed to upload " + file.getOriginalFilename() + " => " + e.getMessage());
-        }
-
+        Video video = new Video();
+        video.setTitle(title);
+        video.setDescription(description);
+        video.setUser(currentUser);
+        videoService.uploadVideo(video, file);
         return "redirect:/videos";
     }
+
 }

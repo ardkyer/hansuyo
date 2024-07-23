@@ -1,33 +1,54 @@
 package com.ardkyer.rion.service;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.S3Object;
 import com.ardkyer.rion.entity.*;
 import com.ardkyer.rion.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class VideoServiceImpl implements VideoService {
 
     private final VideoRepository videoRepository;
+    private final AmazonS3 amazonS3Client;
 
-    @Value("C:\\Users\\k0207\\datas\\")
-    private String uploadDir;
+    @Value("ardkyerspring1")
+    private String bucketName;
 
     @Autowired
-    public VideoServiceImpl(VideoRepository videoRepository) {
+    public VideoServiceImpl(VideoRepository videoRepository, AmazonS3 amazonS3Client) {
         this.videoRepository = videoRepository;
+        this.amazonS3Client = amazonS3Client;
     }
 
     @Override
     @Transactional
-    public Video uploadVideo(Video video) {
+    public Video uploadVideo(Video video, MultipartFile file) throws IOException {
+        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(file.getContentType());
+        metadata.setContentLength(file.getSize());
+
+        amazonS3Client.putObject(bucketName, fileName, file.getInputStream(), metadata);
+
+        video.setVideoUrl(fileName);
         return videoRepository.save(video);
+    }
+
+    @Override
+    public S3Object getVideoFile(String fileName) {
+        return amazonS3Client.getObject(bucketName, fileName);
     }
 
     @Override
@@ -63,14 +84,8 @@ public class VideoServiceImpl implements VideoService {
         if (videoOptional.isPresent()) {
             Video video = videoOptional.get();
 
-            // Delete the physical file
-            File file = new File(uploadDir + video.getVideoUrl());
-            if (file.exists()) {
-                boolean deleted = file.delete();
-                if (!deleted) {
-                    throw new RuntimeException("Failed to delete video file: " + file.getAbsolutePath());
-                }
-            }
+            // Delete the file from S3
+            amazonS3Client.deleteObject(bucketName, video.getVideoUrl());
 
             // Remove the video from the database
             videoRepository.deleteById(id);
