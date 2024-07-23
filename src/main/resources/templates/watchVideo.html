@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${video.title}">Video Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .video-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        video {
+            width: 100%;
+            height: auto;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #666;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="video-container">
+    <h1 th:text="${video.title}">Video Title</h1>
+    <p th:text="${'Uploaded by ' + video.user.username}">Uploaded by User</p>
+    <video controls>
+        <source th:src="@{'/videos/file/' + ${video.videoUrl}}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <p th:text="${video.description}">Video description</p>
+    <a href="/videos" class="back-link">Back to video list</a>
+</div>
+</body>
+</html>
